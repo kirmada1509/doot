@@ -4,7 +4,7 @@ import { NextResponse } from "next/server";
 export async function GET(request: Request) {
   const issuer = process.env.OIDC_ISSUER ?? "http://localhost:8080/realms/doot";
   const clientId = process.env.OIDC_CLIENT_ID ?? "doot-console";
-  const origin = new URL(request.url).origin;
+  const origin = process.env.CONSOLE_ORIGIN ?? new URL(request.url).origin;
   const verifier = randomBytes(32).toString("base64url");
   const state = randomBytes(24).toString("base64url");
   const challenge = createHash("sha256").update(verifier).digest("base64url");

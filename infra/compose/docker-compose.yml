@@ -345,6 +345,7 @@ services:
     command: ["pnpm", "--filter", "@doot/console", "start"]
     environment:
       DOOT_API_INTERNAL_URL: http://control-api:4000
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:3000}
       OIDC_ISSUER: http://localhost:8080/realms/doot
       OIDC_INTERNAL_ISSUER: http://keycloak:8080/realms/doot
       OIDC_CLIENT_ID: doot-console
