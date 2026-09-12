@@ -67,7 +67,7 @@ test("operator uses explicit override and can inspect proof on desktop and mobil
   await request.post(`${localApi}/v1/demo/reset`);
   await page.goto("/ops");
   await expect(page.getByRole("complementary", { name: "Case queue" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Outbound calls" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Provider activity" })).toBeVisible();
   const hold = page.locator(".ops-hold").first();
   await hold.locator("input").focus();
   await page.keyboard.press("Space");

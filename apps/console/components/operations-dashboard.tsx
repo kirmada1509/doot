@@ -166,10 +166,10 @@ export function OperationsDashboard() {
       <section className="ops-content">
         <div className="ops-title"><div><p className="ops-kicker">CASE COORDINATION</p><h1>{current ? current.needSummary : "Waiting for a caller"}</h1></div><span className="ops-state">{current?.state.replaceAll("_", " ") ?? "idle"}</span></div>
         {current && <div className="ops-facts"><span><PhoneCall size={15} /> {current.callerChannel === "browser" ? "Browser softphone" : "Phone"}</span><span><Clock3 size={15} /> Deadline {new Date(current.callbackDeadlineAt).toLocaleTimeString()}</span><span><ShieldCheck size={15} /> Consent and safety screened</span></div>}
-        <div className="ops-tabs" role="tablist" aria-label="Case views"><button role="tab" aria-selected={view === "calls"} onClick={() => setView("calls")}>Provider calls</button><button role="tab" aria-selected={view === "proof"} onClick={() => setView("proof")}>Proof and audit</button></div>
+        <div className="ops-tabs" role="tablist" aria-label="Case views"><button role="tab" aria-selected={view === "calls"} onClick={() => setView("calls")}>Provider checks</button><button role="tab" aria-selected={view === "proof"} onClick={() => setView("proof")}>Proof and audit</button></div>
         {notice && <p className="ops-notice" role="status">{notice}</p>}
         {view === "calls" ? <>
-          <section className="ops-section" aria-label="Provider call status"><div className="ops-section-head"><h2>Outbound calls</h2><span>{calls.length} commands</span></div>
+          <section className="ops-section" aria-label="Provider activity status"><div className="ops-section-head"><h2>Provider activity</h2><span>{calls.length} commands</span></div>
             <div className="ops-call-head"><span>Provider</span><span>Source and reference</span><span>Status</span><span>Outcome</span></div>
             {calls.map((call) => <div className="ops-call" key={call.id}>
               <strong>{call.providerName}{call.kind === "release_hold_goal" ? " · release" : ""}</strong>
@@ -179,7 +179,7 @@ export function OperationsDashboard() {
               {call.evidenceSummary && <p>{call.evidenceSummary}</p>}
               {call.transcriptArtifactId && <button className="ops-transcript-button" onClick={() => void openTranscript(call)}>Provider-side transcript</button>}
             </div>)}
-            {!calls.length && <p className="ops-empty">No outbound calls for this case yet.</p>}
+            {!calls.length && <p className="ops-empty">No provider activity for this case yet.</p>}
           </section>
           {current && <section className="ops-section" aria-label="Decision options"><div className="ops-section-head"><h2>One decision</h2><span>{activeHolds.length} active holds</span></div>
             {current.holds.map((hold) => <label className="ops-hold" key={hold.id}>

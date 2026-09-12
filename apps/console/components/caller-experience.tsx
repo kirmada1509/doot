@@ -274,10 +274,10 @@ export function CallerExperience() {
       </section>
       <section className="caller-work" aria-label="Call progress">
         <div className="work-head"><div><p className="caller-kicker">CASE PROGRESS</p><h2>{progress?.case?.state === "resolved" ? "Choice confirmed" : progress?.case?.state === "no_options" ? "No option confirmed" : progress?.case?.state === "manual_review" ? "Needs human review" : progress?.case ? "Finding your options" : "Ready when you are"}</h2></div><span className="source-tag">{voiceMode === "live" ? "Live voice" : "Fixture voice"}</span></div>
-        <div className="flow-steps">{["Understand need", "Call providers", "Compare options", "Confirm choice"].map((label, index) =>
+        <div className="flow-steps">{["Understand need", "Check providers", "Compare options", "Confirm choice"].map((label, index) =>
           <div key={label} className={progress?.case && (index === 0 || progress.case.state === "resolved" || (index === 1 && progress.calls.length > 0) || (index === 2 && activeHolds.length > 0)) ? "step done" : "step"}><span>{index + 1}</span>{label}</div>
         )}</div>
-        {progress?.calls.length ? <div className="caller-providers"><h3>Provider calls</h3>{progress.calls.filter((call) => call.kind === "provider_hold_goal").map((call) =>
+        {progress?.calls.length ? <div className="caller-providers"><h3>Provider checks</h3>{progress.calls.filter((call) => call.kind === "provider_hold_goal").map((call) =>
           <div className="provider-line" key={call.id}><div><strong>{call.providerName}</strong><small>{call.source === "call_e" ? "Live CALL-E" : "Fixture"}{call.goalRunId ? ` · ${call.goalRunId}` : ""}</small>{call.error ? <small>{call.error}</small> : null}</div><span>{call.outcome?.replaceAll("_", " ") ?? call.status.replaceAll("_", " ")}</span></div>
         )}</div> : null}
         {progress?.case?.state === "awaiting_decision" && activeHolds.length ? <div className="caller-options"><h3>Choose one option</h3>{activeHolds.map((hold) =>
