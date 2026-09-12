@@ -7,6 +7,7 @@
 - Public YouTube/Vimeo video under three minutes: **not recorded or uploaded**.
 - CALL-E account email for the Devpost form: **provide privately in the submission form, not this repository**.
 - One real answered CALL-E rehearsal: **not yet observed**. Configure an authorized personal number, sign in through OIDC, answer the call, and confirm the case code and transcript before recording.
+- Public GitHub Actions: **not executed**. GitHub reports that the account is locked due to a billing issue; the `verify` job did not start. Fix the account and rerun CI. Local lint, tests, integration, and browser checks passed.
 
 ## Demonstrated In Fixture Mode
 
