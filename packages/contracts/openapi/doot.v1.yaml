@@ -1,0 +1,651 @@
+openapi: 3.1.0
+info:
+  title: Doot Control API
+  version: 0.1.0
+  summary: Hotline-first coordination API for cases, operations, webhooks, and diagnostics.
+servers:
+  - url: http://localhost:4000
+paths:
+  /health/live:
+    get:
+      summary: Liveness check
+      responses:
+        "200":
+          description: Service is alive
+  /health/ready:
+    get:
+      summary: Readiness check
+      responses:
+        "200":
+          description: Service dependencies are ready
+  /metrics:
+    get:
+      summary: Prometheus metrics for outcome proof and workflow queues
+      responses:
+        "200":
+          description: Prometheus exposition format
+          content:
+            text/plain:
+              schema:
+                type: string
+  /v1/auth/context:
+    get:
+      summary: Resolve the caller's authenticated identity and role
+      parameters:
+        - $ref: "#/components/parameters/DootRoleHeader"
+        - $ref: "#/components/parameters/DootSubjectHeader"
+      responses:
+        "200":
+          description: Auth context and effective role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthContext"
+  /v1/caller/sessions:
+    post:
+      summary: Open a short-lived browser softphone session for the demo line
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [dialedNumber, service, language]
+              properties:
+                dialedNumber:
+                  type: string
+                service:
+                  type: string
+                  enum: [shelter, respite]
+                language:
+                  type: string
+                  enum: [en, hi, hinglish]
+      responses:
+        "200":
+          description: Browser voice session URL and bearer capability token
+        "400":
+          description: Not the demo line
+  /v1/caller/sessions/{sessionToken}:
+    get:
+      summary: Read case-scoped browser call progress and provider command status
+      parameters:
+        - name: sessionToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Redacted case and provider-call projection
+        "404":
+          description: Session missing or expired
+  /v1/caller/sessions/{sessionToken}/decision:
+    post:
+      summary: Signal an explicit selection of a current unexpired option
+      parameters:
+        - name: sessionToken
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [caseVersion, selectedHoldId]
+              properties:
+                caseVersion:
+                  type: number
+                selectedHoldId:
+                  type: string
+      responses:
+        "200":
+          description: Decision signal accepted
+        "404":
+          description: Session missing or expired
+        "409":
+          description: Stale version, case state, or hold
+  /v1/telephony/exotel/resolve:
+    get:
+      summary: Resolve an Exotel inbound call into a short-lived voice session
+      parameters:
+        - name: callSid
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: language
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [en, hi, hinglish]
+        - name: callerPhoneBlindIndex
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Voice session URL on the Voice Runtime
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessionUrl, expiresAt, sessionToken, callSid]
+                properties:
+                  callSid:
+                    type: string
+                  sessionToken:
+                    type: string
+                  sessionUrl:
+                    type: string
+                  expiresAt:
+                    type: string
+                    format: date-time
+  /v1/internal/telephony/sessions/{sessionToken}:
+    get:
+      summary: Resolve a short-lived voice session for the Voice Runtime
+      parameters:
+        - name: sessionToken
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Session metadata
+        "401":
+          description: Invalid internal service credential
+        "404":
+          description: Session missing or expired
+  /v1/internal/demo-cases/{caseCode}:
+    get:
+      summary: Resolve a spoken six-digit demo case code for an authorized answerer
+      parameters:
+        - name: caseCode
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Unique browser case identity
+        "404":
+          description: Code missing or ambiguous
+  /v1/internal/provider-transcripts:
+    post:
+      summary: Encrypt and correlate provider-side transcript turns
+      responses:
+        "201":
+          description: Provider transcript archived
+        "400":
+          description: Invalid case code, provider, or transcript
+  /v1/webhooks/exotel/status:
+    post:
+      summary: Exotel call or message delivery webhook inbox
+      responses:
+        "202":
+          description: Event accepted into inbox
+  /v1/webhooks/call-e:
+    post:
+      summary: CALL-E terminal event webhook inbox
+      responses:
+        "202":
+          description: Event accepted into inbox
+        "400":
+          description: CALL-E header and body event IDs did not match
+        "401":
+          description: Invalid webhook credential
+  /v1/internal/inbox/{entryId}/processed:
+    post:
+      summary: Mark a refetched webhook event as processed
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Inbox entry marked processed
+        "401":
+          description: Invalid internal service credential
+        "404":
+          description: Inbox entry not found
+  /v1/internal/cases/{caseId}/provider-goals:
+    post:
+      summary: Enqueue one idempotent provider goal for a Temporal child workflow
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Provider command persisted in the transactional outbox
+        "401":
+          description: Invalid internal service credential
+  /v1/internal/cases/{caseId}/provider-results:
+    post:
+      summary: Normalize and persist a provider result from a Temporal activity
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Provider evidence and any valid hold persisted
+        "400":
+          description: Invalid provider result
+  /v1/internal/cases/{caseId}/callback:
+    post:
+      summary: Finalize provider fan-out and enqueue the caller decision callback
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Callback queued or case closed with no options
+  /v1/internal/cases/{caseId}/expire:
+    post:
+      summary: Expire active holds after the Temporal decision deadline
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Case and active holds expired
+  /v1/internal/cases/{caseId}/holds/{holdId}/expire:
+    post:
+      summary: Expire one active hold from a durable Temporal timer
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - name: holdId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Hold marked expired; case expires only when no active holds remain
+  /v1/internal/cases/{caseId}/safety-handoff:
+    post:
+      summary: Stop ordinary orchestration after a mid-call safety escalation
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Case moved to safety handoff and active holds queued for release
+  /v1/internal/cases/{caseId}/artifacts:
+    post:
+      summary: Encrypt and archive a case artifact with retention metadata
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "201":
+          description: Encrypted artifact persisted
+  /v1/cases:
+    post:
+      summary: Persist a consented intake and start its durable CaseWorkflow
+      responses:
+        "201":
+          description: Case created and workflow start result returned
+        "400":
+          description: Consent missing or intake invalid
+  /v1/internal/workflows/{workflowId}/provider-result:
+    post:
+      summary: Signal a terminal provider result to its Temporal child workflow
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signal delivery status
+  /v1/internal/workflows/{workflowId}/release-result:
+    post:
+      summary: Signal provider release proof to the parent CaseWorkflow
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signal delivery status
+  /v1/internal/workflows/{workflowId}/decision:
+    post:
+      summary: Signal one versioned caller decision to the CaseWorkflow
+      parameters:
+        - name: workflowId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Signal delivery status
+  /v1/ops/inbox:
+    get:
+      summary: List idempotent webhook inbox entries
+      responses:
+        "200":
+          description: Webhook inbox entries
+  /v1/ops/outbox:
+    get:
+      summary: List pending and completed outbound command records
+      responses:
+        "200":
+          description: Outbox items
+  /v1/ops/outbox/lease:
+    post:
+      summary: Lease the next pending outbound command for a worker
+      responses:
+        "200":
+          description: Leased outbox item or null
+  /v1/ops/outbox/{itemId}/attempt-result:
+    post:
+      summary: Record the result of an outbound command attempt
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated outbox item
+        "404":
+          description: Outbox item not found
+  /v1/ops/cases:
+    get:
+      summary: List active operation cases
+      responses:
+        "200":
+          description: Case list and proof metrics
+  /v1/intake/classify:
+    post:
+      summary: Classify intake and select eligible demo providers
+      responses:
+        "200":
+          description: Classification result
+  /v1/providers:
+    get:
+      summary: List configured providers
+      responses:
+        "200":
+          description: Provider registry
+  /v1/privacy/redact-telemetry:
+    post:
+      summary: Remove sensitive fields from telemetry attributes
+      responses:
+        "200":
+          description: Redacted attributes
+  /v1/audit/artifacts:
+    get:
+      summary: List encrypted audit artifacts
+      responses:
+        "200":
+          description: Artifact inventory
+  /v1/audit/access-events:
+    get:
+      summary: List immutable sensitive-artifact access events
+      responses:
+        "200":
+          description: Audit access history
+  /v1/audit/artifacts/{artifactId}/access:
+    post:
+      summary: Check sensitive artifact access authorization
+      parameters:
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Access decision
+  /v1/audit/deletion-jobs/run:
+    post:
+      summary: Run retention-based deletion planning
+      responses:
+        "200":
+          description: Updated artifact inventory
+  /v1/providers/{providerId}/reliability/project:
+    post:
+      summary: Project provider reliability from a recorded outcome
+      parameters:
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reliability projection
+  /v1/ops/cases/{caseId}:
+    get:
+      summary: Fetch one operation case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Case
+  /v1/ops/cases/{caseId}/provider-calls:
+    get:
+      summary: Read authenticated provider command lifecycle and result projection
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Provider hold and release calls, labeled by source
+        "401":
+          description: Operator authentication required
+  /v1/ops/cases/{caseId}/call-e-rehearsal:
+    get:
+      summary: Read the separate authorized CALL-E rehearsal state and refresh authenticated call status
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Configuration readiness and redacted rehearsal status
+        "502":
+          description: Refresh failed; last durable state is included
+    post:
+      summary: Place or idempotently retry one authorized human rehearsal call for a case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [confirmed, service]
+              properties:
+                confirmed:
+                  type: boolean
+                  const: true
+                service:
+                  type: string
+                  enum: [shelter, respite]
+      responses:
+        "202":
+          description: CALL-E accepted the rehearsal call
+        "409":
+          description: Safety handoff active or a different service is already locked
+        "503":
+          description: Rehearsal key or authorized destination is not configured
+  /v1/ops/cases/{caseId}/call-e-rehearsal/transcript:
+    get:
+      summary: Read a bounded, audited CALL-E transcript excerpt
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Archived CALL-E transcript excerpt
+        "404":
+          description: No archived rehearsal transcript
+  /v1/ops/cases/{caseId}/provider-transcripts/{providerId}:
+    get:
+      summary: Read an audited provider-side transcript excerpt
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - name: providerId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Provider-side turns with audited access
+        "404":
+          description: No matching answerer transcript
+  /v1/ops/cases/{caseId}/events:
+    get:
+      summary: Fetch case timeline events
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Events
+  /v1/ops/events:
+    get:
+      summary: Server-sent event stream for operations updates
+      responses:
+        "200":
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+  /v1/ops/cases/{caseId}/actions/decide:
+    post:
+      summary: Commit one caller or operator decision
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Decision accepted
+        "409":
+          description: Decision rejected
+  /v1/ops/cases/{caseId}/actions/pause:
+    post:
+      summary: Pause a case into manual review
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Case paused
+  /v1/ops/cases/{caseId}/actions/resume:
+    post:
+      summary: Resume a manually paused case
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Case resumed
+  /v1/ops/cases/{caseId}/actions/force-release:
+    post:
+      summary: Force all uncommitted active or pending holds into release pending
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Force release queued
+  /v1/ops/cases/{caseId}/actions/release-result:
+    post:
+      summary: Record provider release confirmation for one hold
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [holdId, succeeded]
+              properties:
+                holdId:
+                  type: string
+                succeeded:
+                  type: boolean
+      responses:
+        "200":
+          description: Case with updated hold release status
+  /v1/ops/cases/{caseId}/actions/verify-existing:
+    post:
+      summary: Verify phone blind index and spoken reference before existing-case mutation
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+      responses:
+        "200":
+          description: Verification result
+  /v1/diagnostics/cases/{caseId}/bundle:
+    get:
+      summary: Compact deterministic diagnostics bundle
+      parameters:
+        - $ref: "#/components/parameters/CaseId"
+        - name: mode
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: includeSensitive
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: ["true", "false"]
+        - name: reason
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Compact support bundle capped near 16 KB
+        "400":
+          description: Auditor reason missing for sensitive mode
+        "403":
+          description: Role insufficient for requested mode
+  /v1/demo/reset:
+    post:
+      summary: Reset demo cases, queues, webhook inbox, and audit artifacts
+      responses:
+        "200":
+          description: Fresh demo queue and outcome metrics
+components:
+  parameters:
+    CaseId:
+      name: caseId
+      in: path
+      required: true
+      schema:
+        type: string
+    DootRoleHeader:
+      name: x-doot-role
+      in: header
+      required: false
+      schema:
+        $ref: "#/components/schemas/AccessRole"
+    DootSubjectHeader:
+      name: x-doot-subject
+      in: header
+      required: false
+      schema:
+        type: string
+  schemas:
+    AccessRole:
+      type: string
+      enum: [operator, supervisor, developer, auditor, admin]
+    AuthContext:
+      type: object
+      required: [subject, role, authMode]
+      properties:
+        subject:
+          type: string
+        role:
+          $ref: "#/components/schemas/AccessRole"
+        authMode:
+          type: string
+          enum: [demo-header, oidc]

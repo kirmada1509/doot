@@ -1,0 +1,69 @@
+name: Doot CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.3
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test
+
+      - name: Check OpenAPI routes and generated types
+        run: pnpm test:openapi
+
+      - name: Install Playwright browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Test operations console
+        run: pnpm test:acceptance
+
+      - name: Check local infrastructure config
+        run: pnpm test:infra
+
+      - name: Test voice runtime
+        run: pnpm test:voice
+
+      - name: Smoke demo
+        run: pnpm smoke
+
+      - name: Test PostgreSQL persistence
+        run: pnpm test:postgres
+
+      - name: Test authorized CALL-E rehearsal against local fake API
+        run: pnpm test:calle-rehearsal
+
+      - name: Test Temporal and PostgreSQL integration
+        run: pnpm test:temporal
+
+      - name: Build
+        run: pnpm build

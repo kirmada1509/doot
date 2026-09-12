@@ -1,0 +1,71 @@
+{
+  "realm": "doot",
+  "enabled": true,
+  "displayName": "Doot Operations",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": true,
+  "rememberMe": false,
+  "loginWithEmailAllowed": true,
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA256",
+  "otpPolicyDigits": 6,
+  "otpPolicyPeriod": 30,
+  "roles": {
+    "realm": [
+      { "name": "operator" },
+      { "name": "supervisor" },
+      { "name": "developer" },
+      { "name": "auditor" },
+      { "name": "admin" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "doot-console",
+      "name": "Doot Operations Console",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": ["http://localhost:3000/api/auth/callback"],
+      "webOrigins": ["http://localhost:3000"],
+      "attributes": { "pkce.code.challenge.method": "S256" },
+      "protocolMappers": [
+        {
+          "name": "doot-console-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "doot-console",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "lightweight.claim": "false"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "demo-operator",
+      "enabled": true,
+      "firstName": "Demo",
+      "lastName": "Operator",
+      "emailVerified": true,
+      "email": "operator@doot.local",
+      "realmRoles": ["operator"],
+      "credentials": [{ "type": "password", "value": "doot-demo", "temporary": false }]
+    },
+    {
+      "username": "demo-auditor",
+      "enabled": true,
+      "firstName": "Demo",
+      "lastName": "Auditor",
+      "emailVerified": true,
+      "email": "auditor@doot.local",
+      "realmRoles": ["auditor"],
+      "credentials": [{ "type": "password", "value": "doot-demo", "temporary": false }]
+    }
+  ]
+}

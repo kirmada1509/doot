@@ -1,0 +1,52 @@
+groups:
+  - name: doot-demo-reliability
+    rules:
+      - alert: DootCallbackDeadlineBreach
+        expr: sum(doot_callback_deadline_breaches_total) > 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: Caller callback deadline breach detected
+      - alert: DootReleaseDebt
+        expr: sum(doot_release_pending_holds) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Unreleased alternative holds remain open
+      - alert: DootReleaseFailure
+        expr: sum(doot_release_failures_total) > 0
+        for: 2m
+        labels:
+          severity: page
+        annotations:
+          summary: Provider hold release failed
+      - alert: DootWebhookBacklog
+        expr: sum(doot_webhook_inbox_unprocessed) > 10
+        for: 3m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Webhook inbox backlog is growing
+      - alert: DootVoiceDependencyUnavailable
+        expr: min(doot_voice_dependency_available) < 1
+        for: 1m
+        labels:
+          severity: page
+        annotations:
+          summary: Voice or telephony dependency is unavailable
+      - alert: DootArchiveFailure
+        expr: sum(doot_archive_failures_total) > 0
+        for: 5m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Audit archive operation needs attention
+      - alert: DootSafetyHandoffSpike
+        expr: sum(doot_safety_handoffs_total) > 5
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: Safety handoff volume is unusually high

@@ -1,0 +1,11 @@
+.git
+.next
+.turbo
+**/.venv
+**/__pycache__
+**/.pytest_cache
+node_modules
+coverage
+output
+*.log
+.DS_Store

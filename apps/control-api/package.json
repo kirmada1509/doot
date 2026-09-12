@@ -1,0 +1,32 @@
+{
+  "name": "@doot/control-api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/server.ts",
+    "db:migrate": "bun run src/migrate.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.json --noEmit && bun test test/*.test.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1130.0",
+    "@aws-sdk/s3-request-presigner": "^3.1130.0",
+    "@doot/config": "workspace:*",
+    "@doot/contracts": "workspace:*",
+    "@doot/core": "workspace:*",
+    "@elysiajs/cors": "^1.1.1",
+    "@elysiajs/opentelemetry": "^1.4.11",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.206.0",
+    "@opentelemetry/sdk-trace-node": "^2.0.0",
+    "@temporalio/client": "^1.23.0",
+    "elysia": "^1.1.24",
+    "jose": "^6.2.12",
+    "postgres": "^3.4.7"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

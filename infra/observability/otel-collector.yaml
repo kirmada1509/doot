@@ -1,0 +1,58 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+  filter/redact_pii:
+    logs:
+      log_record:
+        - 'IsMatch(body, ".*(phone|transcript|utterance|address|name).*")'
+  attributes/redact:
+    actions:
+      - key: phone
+        action: delete
+      - key: caller_phone
+        action: delete
+      - key: transcript
+        action: delete
+      - key: utterance
+        action: delete
+      - key: baggage
+        action: delete
+  batch:
+    timeout: 1s
+    send_batch_size: 512
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+  prometheus:
+    endpoint: 0.0.0.0:8889
+  debug:
+    verbosity: basic
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/redact, batch]
+      exporters: [otlp/jaeger]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/redact_pii, attributes/redact, batch]
+      exporters: [otlphttp/loki]

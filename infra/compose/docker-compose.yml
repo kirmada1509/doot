@@ -1,0 +1,388 @@
+# Profiles:
+#   data          - postgres, vault, minio, keycloak
+#   workflow      - temporal + temporal-ui
+#   observability - otel, jaeger, loki, prometheus, alertmanager, grafana
+#   application   - Doot API, worker, communications, voice, and console
+#   dev-logs      - dozzle behind docker-socket-proxy
+#
+# Example:
+#   docker compose -f infra/compose/docker-compose.yml --profile data --profile workflow --profile observability up -d
+
+services:
+  postgres:
+    image: postgres:16
+    profiles: ["data"]
+    environment:
+      POSTGRES_USER: doot
+      POSTGRES_PASSWORD: doot
+      POSTGRES_DB: doot
+    ports:
+      - "${POSTGRES_HOST_PORT:-5432}:5432"
+    volumes:
+      - doot-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U doot -d doot"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  temporal:
+    image: temporalio/auto-setup:1.25.2
+    profiles: ["workflow"]
+    environment:
+      DB: postgres12
+      DB_PORT: "5432"
+      POSTGRES_USER: doot
+      POSTGRES_PWD: doot
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "${TEMPORAL_HOST_PORT:-7233}:7233"
+    depends_on:
+      - postgres
+
+  temporal-ui:
+    image: temporalio/ui:2.31.2
+    profiles: ["workflow"]
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      TEMPORAL_CORS_ORIGINS: ${CONSOLE_ORIGIN:-http://localhost:3000}
+    ports:
+      - "${TEMPORAL_UI_HOST_PORT:-8088}:8080"
+    depends_on:
+      - temporal
+
+  vault:
+    image: hashicorp/vault:1.17.5
+    profiles: ["data"]
+    cap_add:
+      - IPC_LOCK
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: doot-root
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+    ports:
+      - "${VAULT_HOST_PORT:-8200}:8200"
+    volumes:
+      - doot-vault:/vault/file
+
+  vault-init:
+    image: hashicorp/vault:1.17.5
+    profiles: ["data"]
+    depends_on:
+      - vault
+    environment:
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: doot-root
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until vault status >/dev/null 2>&1; do sleep 1; done
+        vault secrets enable transit 2>/dev/null || true
+
+  minio:
+    image: minio/minio:RELEASE.2024-09-13T20-26-02Z
+    profiles: ["data"]
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: doot
+      MINIO_ROOT_PASSWORD: doot-minio-password
+      MINIO_REGION_NAME: ap-south-1
+    ports:
+      - "${MINIO_HOST_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_HOST_PORT:-9001}:9001"
+    volumes:
+      - doot-minio:/data
+
+  minio-init:
+    image: minio/mc:RELEASE.2024-09-16T17-43-14Z
+    profiles: ["data"]
+    depends_on:
+      - minio
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set doot http://minio:9000 doot doot-minio-password; do sleep 1; done
+        mc mb --ignore-existing --with-lock doot/doot-audit
+        mc retention set --default governance 365d doot/doot-audit
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    profiles: ["data"]
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: doot-admin
+    ports:
+      - "${KEYCLOAK_HOST_PORT:-8080}:8080"
+    volumes:
+      - doot-keycloak:/opt/keycloak/data
+      - ../keycloak/doot-realm.json:/opt/keycloak/data/import/doot-realm.json:ro
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.109.0
+    profiles: ["observability"]
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ../observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    ports:
+      - "${OTEL_GRPC_HOST_PORT:-4317}:4317"
+      - "${OTEL_HTTP_HOST_PORT:-4318}:4318"
+      - "${OTEL_METRICS_HOST_PORT:-8889}:8889"
+    depends_on:
+      - jaeger
+      - loki
+      - prometheus
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.60
+    profiles: ["observability"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "${JAEGER_HOST_PORT:-16686}:16686"
+
+  loki:
+    image: grafana/loki:3.1.2
+    profiles: ["observability"]
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ../observability/loki.yaml:/etc/loki/config.yaml:ro
+      - doot-loki:/loki
+    ports:
+      - "${LOKI_HOST_PORT:-3100}:3100"
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["observability"]
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.retention.time=7d"
+    volumes:
+      - ../observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../observability/prometheus-rules.yml:/etc/prometheus/rules.yml:ro
+      - doot-prometheus:/prometheus
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    profiles: ["observability"]
+    command: ["--config.file=/etc/alertmanager/alertmanager.yml"]
+    volumes:
+      - ../observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "${ALERTMANAGER_HOST_PORT:-9093}:9093"
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    profiles: ["observability"]
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_SECURITY_ADMIN_PASSWORD: doot
+    volumes:
+      - ../observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ../observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - doot-grafana:/var/lib/grafana
+    ports:
+      - "${GRAFANA_HOST_PORT:-3001}:3000"
+    depends_on:
+      - jaeger
+      - loki
+      - prometheus
+
+  control-api:
+    build:
+      context: ../..
+      target: bun-service
+    profiles: ["application"]
+    command: ["sh", "-c", "bun apps/control-api/src/migrate.ts && exec bun apps/control-api/src/server.ts"]
+    environment:
+      PORT: "4000"
+      NODE_ENV: development
+      AUTH_MODE: ${AUTH_MODE:-demo}
+      SEED_DEMO_DATA: ${SEED_DEMO_DATA:-true}
+      COMMUNICATION_MODE: ${COMMUNICATION_MODE:-mock}
+      VOICE_PROVIDER_MODE: ${VOICE_PROVIDER_MODE:-fixture}
+      CALLER_CONTACT_MODE: ${CALLER_CONTACT_MODE:-disabled}
+      CALL_E_API_KEY: ${CALL_E_API_KEY:-demo-call-e-key}
+      CALL_E_BASE_URL: ${CALL_E_BASE_URL:-https://api.heycall-e.com}
+      CALL_E_DEMO_TARGET_E164: ${CALL_E_DEMO_TARGET_E164:-}
+      DATA_STORE: postgres
+      DATABASE_URL: postgres://doot:doot@postgres:5432/doot
+      TEMPORAL_ENABLED: "true"
+      TEMPORAL_ADDRESS: temporal:7233
+      CONTROL_API_URL: http://control-api:4000
+      VOICE_RUNTIME_WS_URL: ws://voice-runtime:4100
+      VOICE_RUNTIME_PUBLIC_WS_URL: ${VOICE_RUNTIME_PUBLIC_WS_URL:-ws://localhost:4100}
+      VOICE_RUNTIME_HTTP_URL: http://voice-runtime:4100
+      DEMO_DIAL_CODE: ${DEMO_DIAL_CODE:-4040}
+      PRIVACY_MODE: vault-minio
+      VAULT_ADDR: http://vault:8200
+      VAULT_TOKEN: doot-root
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_ID: doot
+      S3_SECRET_ACCESS_KEY: doot-minio-password
+      OIDC_ISSUER: http://localhost:8080/realms/doot
+      OIDC_JWKS_URL: http://keycloak:8080/realms/doot/protocol/openid-connect/certs
+      CONSOLE_ORIGIN: ${CONSOLE_ORIGIN:-http://localhost:3000}
+      INTERNAL_SERVICE_TOKEN: doot-local-service-token
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+    ports:
+      - "${CONTROL_API_PORT:-4000}:4000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+      vault-init:
+        condition: service_completed_successfully
+      minio-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:4000/health/ready').then(r=>{if(!r.ok)process.exit(1)})"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  worker:
+    build:
+      context: ../..
+      target: node-service
+    profiles: ["application"]
+    command: ["pnpm", "--filter", "@doot/worker", "exec", "tsx", "src/index.ts"]
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+      CONTROL_API_URL: http://control-api:4000
+      INTERNAL_SERVICE_TOKEN: doot-local-service-token
+      NODE_OPTIONS: --require /workspace/apps/worker/node_modules/@opentelemetry/auto-instrumentations-node/build/src/register.js
+      OTEL_SERVICE_NAME: doot-worker
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    depends_on:
+      control-api:
+        condition: service_healthy
+      temporal:
+        condition: service_started
+
+  communications:
+    build:
+      context: ../..
+      target: node-service
+    profiles: ["application"]
+    command: ["pnpm", "--filter", "@doot/communications", "exec", "tsx", "src/index.ts"]
+    environment:
+      COMMUNICATION_MODE: ${COMMUNICATION_MODE:-mock}
+      CALLER_CONTACT_MODE: ${CALLER_CONTACT_MODE:-disabled}
+      CALL_E_API_KEY: ${CALL_E_API_KEY:-demo-call-e-key}
+      CALL_E_BASE_URL: ${CALL_E_BASE_URL:-https://api.heycall-e.com}
+      CALL_E_PROVIDER_GOAL_ID: ${CALL_E_PROVIDER_GOAL_ID:-demo-provider-goal}
+      CALL_E_RELEASE_GOAL_ID: ${CALL_E_RELEASE_GOAL_ID:-demo-release-goal}
+      CALL_E_CALLBACK_GOAL_ID: ${CALL_E_CALLBACK_GOAL_ID:-demo-callback-goal}
+      CALL_E_CONFIRMATION_GOAL_ID: ${CALL_E_CONFIRMATION_GOAL_ID:-demo-confirmation-goal}
+      PROVIDER_PHONE_MAP_JSON: ${PROVIDER_PHONE_MAP_JSON:-{}}
+      CALLER_PHONE_MAP_JSON: ${CALLER_PHONE_MAP_JSON:-{}}
+      EXOTEL_API_KEY: ${EXOTEL_API_KEY:-demo-exotel-key}
+      EXOTEL_ACCOUNT_SID: ${EXOTEL_ACCOUNT_SID:-demo-exotel-sid}
+      EXOTEL_API_TOKEN: ${EXOTEL_API_TOKEN:-demo-exotel-token}
+      EXOTEL_SUBDOMAIN: ${EXOTEL_SUBDOMAIN:-api.in.exotel.com}
+      EXOTEL_SMS_FROM: ${EXOTEL_SMS_FROM:-DOOTAI}
+      CONTROL_API_URL: http://control-api:4000
+      VOICE_RUNTIME_HTTP_URL: http://voice-runtime:4100
+      INTERNAL_SERVICE_TOKEN: doot-local-service-token
+      NODE_OPTIONS: --require /workspace/apps/communications/node_modules/@opentelemetry/auto-instrumentations-node/build/src/register.js
+      OTEL_SERVICE_NAME: doot-communications
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+    depends_on:
+      control-api:
+        condition: service_healthy
+
+  voice-runtime:
+    build:
+      context: ../..
+      target: voice-runtime
+    profiles: ["application"]
+    environment:
+      CONTROL_API_URL: http://control-api:4000
+      INTERNAL_SERVICE_TOKEN: doot-local-service-token
+      COMMUNICATION_MODE: ${COMMUNICATION_MODE:-mock}
+      VOICE_PROVIDER_MODE: ${VOICE_PROVIDER_MODE:-fixture}
+      DEEPGRAM_API_KEY: ${DEEPGRAM_API_KEY:-demo-deepgram-key}
+      ELEVENLABS_API_KEY: ${ELEVENLABS_API_KEY:-demo-elevenlabs-key}
+      ELEVENLABS_VOICE_ID: ${ELEVENLABS_VOICE_ID:-}
+      AWS_REGION: ${AWS_REGION:-ap-south-1}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_EC2_METADATA_DISABLED: "true"
+      STRANDS_FAST_MODEL_ID: global.anthropic.claude-haiku-4-5
+      STRANDS_PLANNING_MODEL_ID: global.anthropic.claude-sonnet-4-6
+      EXOTEL_ACCOUNT_SID: ${EXOTEL_ACCOUNT_SID:-demo-exotel-sid}
+      PROVIDER_ANSWERER_PHONE_MAP_JSON: ${PROVIDER_PHONE_MAP_JSON:-{}}
+      PROVIDER_ANSWERER_TOKEN: ${PROVIDER_ANSWERER_TOKEN:-}
+      PROVIDER_LEDGER_PATH: /data/provider-ledger.sqlite3
+    volumes:
+      - provider-ledger:/data
+    ports:
+      - "${VOICE_RUNTIME_PORT:-4100}:4100"
+    depends_on:
+      control-api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4100/health/live')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  console:
+    build:
+      context: ../..
+      target: node-service
+    profiles: ["application"]
+    command: ["pnpm", "--filter", "@doot/console", "start"]
+    environment:
+      DOOT_API_INTERNAL_URL: http://control-api:4000
+      OIDC_ISSUER: http://localhost:8080/realms/doot
+      OIDC_INTERNAL_ISSUER: http://keycloak:8080/realms/doot
+      OIDC_CLIENT_ID: doot-console
+    ports:
+      - "${CONSOLE_PORT:-3000}:3000"
+    depends_on:
+      control-api:
+        condition: service_healthy
+
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0
+    profiles: ["dev-logs"]
+    environment:
+      CONTAINERS: "1"
+      EVENTS: "1"
+      INFO: "1"
+      LOGS: "1"
+      POST: "0"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+  dozzle:
+    image: amir20/dozzle:v8.5.3
+    profiles: ["dev-logs"]
+    environment:
+      DOZZLE_HOST: tcp://docker-socket-proxy:2375
+      DOZZLE_NO_ANALYTICS: "true"
+    ports:
+      - "9999:8080"
+    depends_on:
+      - docker-socket-proxy
+
+volumes:
+  provider-ledger:
+  doot-postgres:
+  doot-vault:
+  doot-minio:
+  doot-keycloak:
+  doot-loki:
+  doot-prometheus:
+  doot-grafana:

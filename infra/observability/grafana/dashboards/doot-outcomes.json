@@ -1,0 +1,71 @@
+{
+  "uid": "doot-outcomes",
+  "title": "Doot Outcomes",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "tags": ["doot", "hotline"],
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Resolved Before Expiry",
+      "id": 1,
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "sum(doot_cases_resolved_before_expiry_total)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Orphan Hold Rate",
+      "id": 2,
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "avg(doot_orphan_hold_rate)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "timeseries",
+      "title": "Callback Breaches",
+      "id": 3,
+      "gridPos": { "x": 0, "y": 5, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(doot_callback_deadline_breaches_total)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Release Failures",
+      "id": 4,
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "sum(doot_release_failures_total)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Voice Dependencies",
+      "id": 5,
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "min(doot_voice_dependency_available)",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "time": { "from": "now-30m", "to": "now" }
+}

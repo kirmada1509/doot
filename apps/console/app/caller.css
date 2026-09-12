@@ -1,0 +1,96 @@
+.caller {
+  min-height: 100vh;
+  background: #f7f8f7;
+  color: #1c2925;
+}
+.caller button, .caller input, .caller select { font: inherit; }
+.caller button { cursor: pointer; }
+.caller button:disabled { cursor: not-allowed; opacity: .5; }
+.caller-header {
+  height: 72px; padding: 0 clamp(20px, 4vw, 72px); display: flex; align-items: center;
+  justify-content: space-between; border-bottom: 1px solid #dfe6e2; background: #fff;
+}
+.caller-header a { display: inline-flex; align-items: center; gap: 7px; color: #246c59; font-weight: 650; text-decoration: none; }
+.caller-brand { display: flex; align-items: center; gap: 9px; }
+.caller-brand strong { font-size: 21px; }
+.caller-brand > span:last-child { color: #697771; font-size: 13px; border-left: 1px solid #d5dfd9; padding-left: 10px; margin-left: 2px; }
+.caller-mark { display: grid; place-items: center; width: 36px; height: 36px; background: #1f6c56; color: #fff; border-radius: 6px; font-weight: 800; }
+.caller-layout { display: grid; grid-template-columns: minmax(360px, 44%) minmax(0, 1fr); min-height: calc(100vh - 72px); }
+.caller-main { padding: 40px clamp(20px, 5vw, 72px); border-right: 1px solid #dfe6e2; }
+.caller-work { padding: 42px clamp(20px, 4vw, 64px); min-width: 0; }
+.caller-intro { max-width: 520px; margin-bottom: 24px; }
+.caller-kicker { margin: 0 0 8px; color: #32765e; font-size: 11px; font-weight: 800; letter-spacing: 0; }
+.caller-intro h1 { font-size: 39px; line-height: 1.1; margin: 0 0 12px; }
+.caller-intro > p:last-child { color: #62726b; line-height: 1.5; margin: 0; }
+.dialer { width: min(340px, 100%); margin: 0 auto; padding: 24px; border: 1px solid #d8e2dc; border-radius: 8px; background: #fff; box-shadow: 0 10px 28px #153b2920; }
+.service-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; gap: 3px; background: #edf2ee; border-radius: 6px; margin-bottom: 24px; }
+.service-switch button { border: 0; background: transparent; padding: 10px 5px; border-radius: 5px; font-weight: 650; color: #5f7168; }
+.service-switch button.selected { background: #fff; color: #206a51; box-shadow: 0 1px 3px #0001; }
+.dial-label { display: block; color: #687870; font-size: 12px; font-weight: 650; margin-bottom: 6px; }
+.dialer input[type=tel] { width: 100%; height: 55px; border: 0; border-bottom: 1px solid #d9e3dd; outline: none; color: #183e30; background: transparent; font-size: 27px; font-weight: 700; text-align: center; letter-spacing: 0; }
+.dialer input[type=tel]:focus { border-bottom-color: #227b5c; }
+.dial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 18px 12px; }
+.dial-grid button, .dial-grid span { aspect-ratio: 1.2; min-height: 49px; }
+.dial-grid button { display: grid; place-items: center; border: 0; border-radius: 5px; background: #f4f7f5; color: #24392f; font-size: 23px; font-weight: 550; }
+.dial-grid button:hover { background: #dcebe1; }
+.dial-footer { display: flex; align-items: center; justify-content: space-between; padding: 0 3px 17px; font-size: 13px; color: #64746d; }
+.dial-footer select { border: 1px solid #d8e2dc; border-radius: 5px; padding: 7px; background: #fff; color: #233a2d; }
+.call-button { width: 100%; height: 50px; display: flex; align-items: center; justify-content: center; gap: 9px; border: 0; border-radius: 6px; background: #1e7055; color: #fff; font-weight: 750; }
+.call-button:hover { background: #145e45; }
+.caller-boundary { display: flex; align-items: flex-start; gap: 9px; max-width: 440px; margin: 22px auto 0; color: #68766c; font-size: 12px; line-height: 1.4; }
+.caller-boundary svg { flex: none; color: #b35b39; }
+.caller-error { max-width: 440px; margin: 16px auto 0; color: #a1372d; font-size: 13px; }
+.call-active { max-width: 440px; margin: 30px auto 0; padding: 25px; border: 1px solid #d8e2dc; border-radius: 8px; background: #fff; }
+.call-identity { display: flex; align-items: center; gap: 13px; }
+.call-identity div { display: grid; gap: 3px; }
+.call-identity span:last-child { color: #67786d; font-size: 13px; }
+.call-avatar { width: 56px; height: 56px; border-radius: 50%; background: #d9eadf; color: #1e7055; display: grid; place-items: center; }
+.call-wave { height: 104px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.call-wave span { width: 7px; border-radius: 5px; background: #2e8965; transition: height .12s; }
+.call-controls { display: flex; justify-content: center; gap: 15px; margin-top: 10px; }
+.call-controls button { width: 48px; height: 48px; border: 1px solid #d4dfd7; border-radius: 50%; background: #fff; color: #274037; display: grid; place-items: center; }
+.call-controls button.hangup { color: #fff; background: #bb473e; border-color: #bb473e; }
+.fixture-request { display: block; margin: 16px auto 0; padding: 9px 12px; border: 1px solid #a8c4b2; border-radius: 5px; background: #eef6ef; color: #1e6048; font-size: 12px; }
+.consent { padding: 15px; border: 1px solid #d8e7db; border-radius: 6px; background: #f6faf6; }
+.consent p { display: flex; gap: 7px; font-size: 13px; line-height: 1.4; margin: 0 0 13px; }
+.consent p svg { flex: none; }
+.consent label { display: flex; gap: 8px; font-size: 13px; line-height: 1.35; }
+.consent button { width: 100%; margin-top: 14px; padding: 10px; border: 0; border-radius: 5px; background: #1e7055; color: white; font-weight: 700; }
+.work-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-bottom: 18px; border-bottom: 1px solid #dfe6e2; }
+.work-head h2 { margin: 0; font-size: 23px; }
+.source-tag { white-space: nowrap; padding: 6px 9px; border-radius: 4px; background: #e3efec; color: #226e60; font-size: 12px; font-weight: 750; }
+.flow-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 21px 0; border-bottom: 1px solid #dfe6e2; }
+.step { color: #89968f; font-size: 12px; line-height: 1.25; display: flex; align-items: center; gap: 7px; }
+.step span { display: grid; place-items: center; width: 22px; height: 22px; flex: none; border: 1px solid #cbd7cf; border-radius: 50%; }
+.step.done { color: #216e50; font-weight: 750; }
+.step.done span { background: #d5e9db; border-color: #9acaad; }
+.caller-work h3 { font-size: 15px; margin: 0 0 12px; }
+.caller-providers, .caller-options, .conversation { padding: 22px 0; border-bottom: 1px solid #dfe6e2; }
+.provider-line { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #e5ebe7; font-size: 13px; }
+.provider-line div { display: grid; min-width: 0; gap: 4px; }
+.provider-line small { color: #6e7d73; overflow-wrap: anywhere; }
+.provider-line > span { color: #1d6d56; text-transform: capitalize; text-align: right; }
+.caller-options button { width: 100%; display: grid; grid-template-columns: 1fr auto; gap: 4px 9px; text-align: left; margin-bottom: 8px; padding: 13px; border: 1px solid #cadbd1; border-radius: 6px; background: #fff; }
+.caller-options button:hover { border-color: #1e7055; }
+.caller-options button strong, .caller-options button span, .caller-options button small { grid-column: 1; overflow-wrap: anywhere; }
+.caller-options button span, .caller-options button small { color: #64736b; }
+.caller-options button svg { grid-column: 2; grid-row: 1 / span 3; align-self: center; color: #1e7055; }
+.caller-confirmed { display: grid; gap: 5px; padding: 15px; background: #e2f1e8; color: #185f42; border-radius: 6px; margin-top: 19px; font-size: 13px; }
+.caller-outcome { margin: 18px 0 0; padding: 14px; border-left: 3px solid #b55f43; background: #fcf4ef; color: #744337; font-size: 13px; line-height: 1.45; }
+.conversation-lines { max-height: 350px; overflow: auto; display: grid; gap: 10px; }
+.spoken { width: fit-content; max-width: 88%; padding: 10px 13px; border-radius: 6px; background: #e7f0e9; font-size: 13px; line-height: 1.45; }
+.spoken.caller-spoken { justify-self: end; background: #e6ebf2; }
+.spoken strong { font-size: 11px; color: #2b6d53; }
+.spoken p { margin: 3px 0 0; }
+.conversation-empty { color: #78887f; font-size: 13px; }
+@media (max-width: 900px) {
+  .caller-layout { grid-template-columns: 1fr; }
+  .caller-main { border-right: 0; border-bottom: 1px solid #dfe6e2; padding: 27px 20px; }
+  .caller-work { padding: 26px 20px; }
+}
+@media (max-width: 520px) {
+  .caller-header { padding: 0 16px; }
+  .caller-intro h1 { font-size: 33px; }
+  .flow-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dialer { box-shadow: none; padding: 18px; }
+}
