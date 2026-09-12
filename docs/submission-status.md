@@ -1,5 +1,13 @@
 # Submission Status
 
+## Submission Links And Pending Items
+
+- Public test build and fixture setup: [Doot repository](https://github.com/kirmada1509/doot). Judges can run the no-credential fixture stack from its README.
+- Required Awesome Phone Call Agents contribution: [open PR #497](https://github.com/CALLE-AI/awesome-phone-call-agents/pull/497), validated with `python3 scripts/validate_repository.py`.
+- Public YouTube/Vimeo video under three minutes: **not recorded or uploaded**.
+- CALL-E account email for the Devpost form: **provide privately in the submission form, not this repository**.
+- One real answered CALL-E rehearsal: **not yet observed**. Configure an authorized personal number, sign in through OIDC, answer the call, and confirm the case code and transcript before recording.
+
 ## Demonstrated In Fixture Mode
 
 - Browser softphone dialpad, consent, microphone handling, fixture spoken request, audible browser-synthesized Doot turns, caller progress, explicit option choice, and a separate `/ops` view.
